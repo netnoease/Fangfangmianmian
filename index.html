@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方方面面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#4CAF50',
+                        accent: '#FFD600',
+                        dark: '#2D3142',
+                        light: '#F8F9FA'
+                    },
+                    fontFamily: {
+                        game: ['"Comic Sans MS"', '"Chalkboard SE"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .方便面背景 {
+                background-image: url('https://pic.ibaotu.com/21/05/25/paixin/pki15754.jpg!ww7002');
+                background-repeat: repeat;
+                background-size: 200px;
+            }
+            .游戏画布 {
+                cursor: crosshair;
+                touch-action: none;
+            }
+            .闪烁 {
+                animation: 闪烁 1s ease-in-out infinite alternate;
+            }
+            @keyframes 闪烁 {
+                from { opacity: 1; }
+                to { opacity: 0.5; }
+            }
+            .弹出 {
+                animation: 弹出 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            }
+            @keyframes 弹出 {
+                0% { transform: scale(0); opacity: 0; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+        }
+    </style>
+</head>
+<body class="方便面背景 min-h-screen font-game overflow-hidden">
+    <!-- 游戏容器 -->
+    <div class="relative w-full h-screen flex flex-col">
+        <!-- 顶部信息栏 -->
+        <header class="bg-dark/80 text-white py-3 px-6 backdrop-blur-sm flex justify-between items-center z-10">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-cutlery text-accent text-2xl"></i>
+                <h1 class="text-[clamp(1.2rem,3vw,1.8rem)] font-bold">方方面面</h1>
+            </div>
+            
+            <div class="flex gap-6 items-center">
+                <div class="text-center">
+                    <div class="text-sm opacity-80">当前得分</div>
+                    <div id="当前得分" class="text-2xl font-bold text-accent">0</div>
+                </div>
+                
+                <div class="text-center">
+                    <div class="text-sm opacity-80">最佳记录</div>
+                    <div id="最佳记录" class="text-2xl font-bold text-primary">0</div>
+                </div>
+                
+                <button id="显示排名" class="bg-primary/90 hover:bg-primary text-white px-4 py-2 rounded-full transition-all flex items-center gap-1">
+                    <i class="fa fa-trophy"></i>
+                    <span>排名</span>
+                </button>
+            </div>
+        </header>
+        
+        <!-- 游戏画布区域 -->
+        <main class="flex-1 relative">
+            <canvas id="游戏画布" class="游戏画布 absolute inset-0 w-full h-full"></canvas>
+            
+            <!-- 游戏提示 -->
+            <div id="游戏提示" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark/80 text-white px-8 py-4 rounded-xl backdrop-blur-sm text-center max-w-md弹出">
+                <p class="text-xl mb-4">按住鼠标或手指拖动，画一个尽可能方的正方形！</p>
+                <button id="开始游戏" class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-full text-lg font-bold transition-all">
+                    开始游戏 <i class="fa fa-play ml-1"></i>
+                </button>
+            </div>
+            
+            <!-- 结果弹窗 -->
+            <div id="结果弹窗" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl max-w-md弹出">
+                <h2 class="text-2xl font-bold text-center text-dark mb-4">本次得分</h2>
+                <div id="本次得分" class="text-5xl font-bold text-center text-primary mb-6">95</div>
+                <div class="text-center mb-6">
+                    <div class="inline-block px-4 py-2 bg-light rounded-full text-dark/80">
+                        方正度: <span id="方正度">98%</span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="再玩一次" class="flex-1 bg-primary hover:bg-primary/80 text-white px-4 py-3 rounded-full transition-all">
+                        再玩一次
+                    </button>
+                    <button id="查看排名" class="flex-1 bg-dark hover:bg-dark/80 text-white px-4 py-3 rounded-full transition-all">
+                        查看排名
+                    </button>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 底部状态栏 -->
+        <footer class="bg-dark/80 text-white py-2 px-4 backdrop-blur-sm text-center text-sm z-10">
+            <p>提示: 正方形越标准，得分越高 | 按 ESC 键重置</p>
+        </footer>
+    </div>
+    
+    <!-- 排名面板 -->
+    <div id="排名面板" class="fixed inset-0 bg-dark/70 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl弹出">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-dark flex items-center gap-2">
+                    <i class="fa fa-trophy text-accent"></i> 排行榜
+                </h2>
+                <button id="关闭排名" class="text-dark/60 hover:text-dark text-xl">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="排名列表" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- 排名项会通过JS动态添加 -->
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <label class="text-dark/80 font-medium">你的昵称:</label>
+                    <input type="text" id="玩家昵称" placeholder="输入昵称" 
+                           class="border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <button id="关闭排名按钮" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-full transition-all">
+                    关闭排行榜
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const 游戏状态 = {
+            正在游戏: false,
+            正在绘制: false,
+            起始点: null,
+            当前点: null,
+            方块列表: [],
+            当前得分: 0,
+            最佳记录: localStorage.getItem('squareGameHighScore') || 0,
+            排名数据: JSON.parse(localStorage.getItem('squareGameRankings')) || []
+        };
+        
+        // DOM元素
+        const 游戏画布 = document.getElementById('游戏画布');
+        const 上下文 = 游戏画布.getContext('2d');
+        const 当前得分显示 = document.getElementById('当前得分');
+        const 最佳记录显示 = document.getElementById('最佳记录');
+        const 游戏提示 = document.getElementById('游戏提示');
+        const 开始游戏按钮 = document.getElementById('开始游戏');
+        const 结果弹窗 = document.getElementById('结果弹窗');
+        const 本次得分显示 = document.getElementById('本次得分');
+        const 方正度显示 = document.getElementById('方正度');
+        const 再玩一次按钮 = document.getElementById('再玩一次');
+        const 查看排名按钮 = document.getElementById('查看排名');
+        const 排名面板 = document.getElementById('排名面板');
+        const 显示排名按钮 = document.getElementById('显示排名');
+        const 关闭排名按钮 = document.getElementById('关闭排名');
+        const 关闭排名按钮2 = document.getElementById('关闭排名按钮');
+        const 玩家昵称输入 = document.getElementById('玩家昵称');
+        const 排名列表 = document.getElementById('排名列表');
+        
+        // 设置画布大小
+        function 设置画布大小() {
+            游戏画布.width = window.innerWidth;
+            游戏画布.height = window.innerHeight - 
+                               document.querySelector('header').offsetHeight -
+                               document.querySelector('footer').offsetHeight;
+        }
+        
+        // 初始化
+        function 初始化() {
+            设置画布大小();
+            window.addEventListener('resize', 设置画布大小);
+            
+            // 更新最佳记录显示
+            最佳记录显示.textContent = 游戏状态.最佳记录;
+            
+            // 为玩家设置默认昵称
+            玩家昵称输入.value = localStorage.getItem('squareGamePlayerName') || '玩家' + Math.floor(Math.random() * 1000);
+            
+            // 事件监听
+            开始游戏按钮.addEventListener('click', 开始游戏);
+            再玩一次按钮.addEventListener('click', 重新开始);
+            查看排名按钮.addEventListener('click', 显示排名);
+            显示排名按钮.addEventListener('click', 显示排名);
+            关闭排名按钮.addEventListener('click', 隐藏排名);
+            关闭排名按钮2.addEventListener('click', 隐藏排名);
+            玩家昵称输入.addEventListener('change', 保存玩家昵称);
+            
+            // 键盘事件
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    重新开始();
+                }
+            });
+            
+            // 鼠标/触摸事件
+            游戏画布.addEventListener('mousedown', 开始绘制);
+            游戏画布.addEventListener('mousemove', 绘制中);
+            游戏画布.addEventListener('mouseup', 结束绘制);
+            游戏画布.addEventListener('mouseleave', 结束绘制);
+            
+            // 触摸事件
+            游戏画布.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                开始绘制({
+                    offsetX: e.touches[0].clientX,
+                    offsetY: e.touches[0].clientY
+                });
+            });
+            
+            游戏画布.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                绘制中({
+                    offsetX: e.touches[0].clientX,
+                    offsetY: e.touches[0].clientY
+                });
+            });
+            
+            游戏画布.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                结束绘制();
+            });
+            
+            // 初始化排名列表
+            更新排名列表();
+        }
+        
+        // 开始游戏
+        function 开始游戏() {
+            游戏状态.正在游戏 = true;
+            游戏提示.classList.add('hidden');
+            清除画布();
+        }
+        
+        // 重新开始
+        function 重新开始() {
+            游戏状态.方块列表 = [];
+            游戏状态.当前得分 = 0;
+            当前得分显示.textContent = '0';
+            清除画布();
+            结果弹窗.classList.add('hidden');
+        }
+        
+        // 开始绘制
+        function 开始绘制(e) {
+            if (!游戏状态.正在游戏) return;
+            
+            游戏状态.正在绘制 = true;
+            游戏状态.起始点 = {
+                x: e.offsetX,
+                y: e.offsetY
+            };
+            游戏状态.当前点 = { ...游戏状态.起始点 };
+        }
+        
+        // 绘制中
+        function 绘制中(e) {
+            if (!游戏状态.正在绘制) return;
+            
+            游戏状态.当前点 = {
+                x: e.offsetX,
+                y: e.offsetY
+            };
+            
+            清除画布();
+            绘制所有方块();
+            绘制当前方块();
+        }
+        
+        // 结束绘制
+        function 结束绘制() {
+            if (!游戏状态.正在绘制) return;
+            
+            游戏状态.正在绘制 = false;
+            
+            // 计算方块属性
+            const 宽度 = 游戏状态.当前点.x - 游戏状态.起始点.x;
+            const 高度 = 游戏状态.当前点.y - 游戏状态.起始点.y;
+            
+            // 只保存有一定大小的方块
+            if (Math.abs(宽度) > 20 && Math.abs(高度) > 20) {
+                const 方块 = {
+                    x: Math.min(游戏状态.起始点.x, 游戏状态.当前点.x),
+                    y: Math.min(游戏状态.起始点.y, 游戏状态.当前点.y),
+                    宽度: Math.abs(宽度),
+                    高度: Math.abs(高度),
+                    颜色: 生成随机颜色()
+                };
+                
+                游戏状态.方块列表.push(方块);
+                计算得分(方块);
+            }
+            
+            清除画布();
+            绘制所有方块();
+        }
+        
+        // 计算得分 (基于正方形的方正程度)
+        function 计算得分(方块) {
+            // 计算宽高比
+            const 比例 = Math.min(方块.宽度, 方块.高度) / Math.max(方块.宽度, 方块.高度);
+            // 方正度 (0-100)
+            const 方正度 = Math.round(比例 * 100);
+            // 基础得分 (考虑大小，但有上限)
+            const 大小因子 = Math.min(Math.sqrt(方块.宽度 * 方块.高度) / 10, 10);
+            // 最终得分
+            const 得分 = Math.round(方正度 * 0.8 + 大小因子 * 2);
+            
+            // 更新当前得分
+            游戏状态.当前得分 += 得分;
+            当前得分显示.textContent = 游戏状态.当前得分;
+            
+            // 更新最佳记录
+            if (游戏状态.当前得分 > 游戏状态.最佳记录) {
+                游戏状态.最佳记录 = 游戏状态.当前得分;
+                最佳记录显示.textContent = 游戏状态.最佳记录;
+                localStorage.setItem('squareGameHighScore', 游戏状态.最佳记录);
+            }
+            
+            // 显示结果弹窗
+            本次得分显示.textContent = 得分;
+            方正度显示.textContent = 方正度 + '%';
+            结果弹窗.classList.remove('hidden');
+        }
+        
+        // 清除画布
+        function 清除画布() {
+            上下文.clearRect(0, 0, 游戏画布.width, 游戏画布.height);
+        }
+        
+        // 绘制所有方块
+        function 绘制所有方块() {
+            游戏状态.方块列表.forEach(方块 => {
+                绘制方块(方块, false);
+            });
+        }
+        
+        // 绘制当前方块
+        function 绘制当前方块() {
+            const 方块 = {
+                x: Math.min(游戏状态.起始点.x, 游戏状态.当前点.x),
+                y: Math.min(游戏状态.起始点.y, 游戏状态.当前点.y),
+                宽度: Math.abs(游戏状态.当前点.x - 游戏状态.起始点.x),
+                高度: Math.abs(游戏状态.当前点.y - 游戏状态.起始点.y),
+                颜色: 'rgba(255, 107, 53, 0.5)' // 半透明的主色调
+            };
+            
+            绘制方块(方块, true);
+        }
+        
+        // 绘制单个方块
+        function 绘制方块(方块, 是临时的) {
+            上下文.fillStyle = 方块.颜色;
+            上下文.strokeStyle = 是临时的 ? 'rgba(255, 107, 53, 1)' : 'rgba(0, 0, 0, 0.3)';
+            上下文.lineWidth = 是临时的 ? 3 : 2;
+            
+            上下文.fillRect(方块.x, 方块.y, 方块.宽度, 方块.高度);
+            上下文.strokeRect(方块.x, 方块.y, 方块.宽度, 方块.高度);
+            
+            // 如果是临时方块，显示对角线以帮助对齐
+            if (是临时的) {
+                上下文.beginPath();
+                上下文.moveTo(方块.x, 方块.y);
+                上下文.lineTo(方块.x + 方块.宽度, 方块.y + 方块.高度);
+                上下文.stroke();
+                
+                上下文.beginPath();
+                上下文.moveTo(方块.x + 方块.宽度, 方块.y);
+                上下文.lineTo(方块.x, 方块.y + 方块.高度);
+                上下文.stroke();
+            }
+        }
+        
+        // 生成随机颜色
+        function 生成随机颜色() {
+            const 颜色列表 = [
+                'rgba(255, 107, 53, 0.6)',   // 主色调
+                'rgba(76, 175, 80, 0.6)',    // 绿色
+                'rgba(33, 150, 243, 0.6)',   // 蓝色
+                'rgba(156, 39, 176, 0.6)',   // 紫色
+                'rgba(255, 193, 7, 0.6)',    // 黄色
+                'rgba(244, 67, 54, 0.6)',    // 红色
+                'rgba(0, 188, 212, 0.6)',    // 青色
+                'rgba(121, 85, 72, 0.6)'     // 棕色
+            ];
+            
+            return 颜色列表[Math.floor(Math.random() * 颜色列表.length)];
+        }
+        
+        // 保存分数到排名
+        function 保存分数到排名() {
+            const 昵称 = 玩家昵称输入.value || '匿名玩家';
+            const 新记录 = {
+                昵称: 昵称,
+                分数: 游戏状态.当前得分,
+                日期: new Date().toISOString()
+            };
+            
+            // 添加新记录并排序
+            游戏状态.排名数据.push(新记录);
+            游戏状态.排名数据.sort((a, b) => b.分数 - a.分数);
+            
+            // 只保留前10名
+            if (游戏状态.排名数据.length > 10) {
+                游戏状态.排名数据 = 游戏状态.排名数据.slice(0, 10);
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('squareGameRankings', JSON.stringify(游戏状态.排名数据));
+            
+            // 更新排名列表
+            更新排名列表();
+        }
+        
+        // 更新排名列表显示
+        function 更新排名列表() {
+            排名列表.innerHTML = '';
+            
+            if (游戏状态.排名数据.length === 0) {
+                const 空项 = document.createElement('div');
+                空项.className = 'text-center py-8 text-gray-500';
+                空项.textContent = '暂无排名数据，快来创造记录吧！';
+                排名列表.appendChild(空项);
+                return;
+            }
+            
+            游戏状态.排名数据.forEach((记录, 索引) => {
+                const 排名项 = document.createElement('div');
+                排名项.className = `flex items-center p-3 rounded-lg ${索引 < 3 ? 'bg-primary/10' : 'bg-gray-50'}`;
+                
+                // 排名数字
+                const 排名数字 = document.createElement('div');
+                排名数字.className = `w-8 h-8 rounded-full flex items-center justify-center font-bold mr-3 ${
+                    索引 === 0 ? 'bg-accent text-dark' : 
+                    索引 === 1 ? 'bg-gray-300 text-dark' : 
+                    索引 === 2 ? 'bg-amber-700 text-white' : 
+                    'bg-gray-200 text-dark'
+                }`;
+                排名数字.textContent = 索引 + 1;
+                
+                // 玩家信息
+                const 玩家信息 = document.createElement('div');
+                玩家信息.className = 'flex-1';
+                
+                const 昵称 = document.createElement('div');
+                昵称.className = 'font-medium';
+                昵称.textContent = 记录.昵称;
+                
+                const 日期 = document.createElement('div');
+                日期.className = 'text-xs text-gray-500';
+                日期.textContent = 格式化日期(记录.日期);
+                
+                玩家信息.appendChild(昵称);
+                玩家信息.appendChild(日期);
+                
+                // 分数
+                const 分数 = document.createElement('div');
+                分数.className = 'font-bold text-xl text-primary';
+                分数.textContent = 记录.分数;
+                
+                排名项.appendChild(排名数字);
+                排名项.appendChild(玩家信息);
+                排名项.appendChild(分数);
+                
+                排名列表.appendChild(排名项);
+            });
+        }
+        
+        // 格式化日期
+        function 格式化日期(日期字符串) {
+            const 日期 = new Date(日期字符串);
+            return `${日期.getMonth() + 1}月${日期.getDate()}日 ${日期.getHours()}:${日期.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // 显示排名面板
+        function 显示排名() {
+            保存分数到排名(); // 显示排名时自动保存当前分数
+            排名面板.classList.remove('hidden');
+            排名面板.classList.add('flex');
+        }
+        
+        // 隐藏排名面板
+        function 隐藏排名() {
+            排名面板.classList.remove('flex');
+            排名面板.classList.add('hidden');
+        }
+        
+        // 保存玩家昵称
+        function 保存玩家昵称() {
+            localStorage.setItem('squareGamePlayerName', 玩家昵称输入.value);
+        }
+        
+        // 启动游戏
+        window.addEventListener('load', 初始化);
+    </script>
+</body>
+</html>
