@@ -323,34 +323,39 @@
             绘制所有方块();
         }
         
-        // 计算得分 (基于正方形的方正程度)
+        // -------- 得分算法更严格 -----------
         function 计算得分(方块) {
-            // 计算宽高比
-            const 比例 = Math.min(方块.宽度, 方块.高度) / Math.max(方块.宽度, 方块.高度);
-            // 方正度 (0-100)
-            const 方正度 = Math.round(比例 * 100);
-            // 基础得分 (考虑大小，但有上限)
-            const 大小因子 = Math.min(Math.sqrt(方块.宽度 * 方块.高度) / 10, 10);
-            // 最终得分
-            const 得分 = Math.round(方正度 * 0.8 + 大小因子 * 2);
-            
+            // 非线性比例，极度接近正方才能高分
+            const 宽高比 = Math.min(方块.宽度, 方块.高度) / Math.max(方块.宽度, 方块.高度);
+            const 方正度 = Math.round(100 * Math.pow(宽高比, 5)); // 改为pow(5)更难拿高分
+
+            // 面积加分，只有面积大于 minArea 才产生加成
+            const minArea = 15000; // 你可以调高低，推荐15000~25000左右
+            const 面积 = 方块.宽度 * 方块.高度;
+            const areaBonus = 面积 > minArea ? Math.round(Math.log2(面积 - minArea + 1)) : 0;
+
+            // 最终得分 capped 到100
+            const 得分 = Math.round(方正度 + areaBonus);
+            const cappedScore = Math.min(得分, 100); // 不允许>100
+
             // 更新当前得分
-            游戏状态.当前得分 += 得分;
+            游戏状态.当前得分 += cappedScore;
             当前得分显示.textContent = 游戏状态.当前得分;
-            
+
             // 更新最佳记录
             if (游戏状态.当前得分 > 游戏状态.最佳记录) {
                 游戏状态.最佳记录 = 游戏状态.当前得分;
                 最佳记录显示.textContent = 游戏状态.最佳记录;
                 localStorage.setItem('squareGameHighScore', 游戏状态.最佳记录);
             }
-            
+
             // 显示结果弹窗
-            本次得分显示.textContent = 得分;
+            本次得分显示.textContent = cappedScore;
             方正度显示.textContent = 方正度 + '%';
             结果弹窗.classList.remove('hidden');
         }
-        
+        // -----------------------------------
+
         // 清除画布
         function 清除画布() {
             上下文.clearRect(0, 0, 游戏画布.width, 游戏画布.height);
