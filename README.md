@@ -1,4 +1,4 @@
-# Fangfangmianmian
+# 方方面面
 
 世事贵圆通，为人宜方正。
 
